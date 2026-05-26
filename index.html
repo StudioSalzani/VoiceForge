@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceForge — Texte en Audio</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090F;--s1:#111118;--s2:#191924;--s3:#22222F;
+  --acc:#E8B84B;--acc-dim:rgba(232,184,75,.12);--acc-glow:rgba(232,184,75,.05);
+  --t1:#F0EDE3;--t2:#8A879A;--t3:#4E4B5E;
+  --bd:rgba(255,255,255,.07);--bda:rgba(232,184,75,.28);
+  --grn:#4ECDC4;--red:#FF6B6B;
+  --r:12px;--rs:8px
+}
+html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;font-size:15px;line-height:1.6}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+.app{max-width:1180px;margin:0 auto;padding:28px 22px;min-height:100vh;display:flex;flex-direction:column;gap:22px}
+header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:1px solid var(--bd)}
+.logo{display:flex;align-items:center;gap:13px}
+.logo-icon{width:42px;height:42px;background:var(--acc-dim);border:1px solid var(--bda);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.logo h1{font-size:21px;font-weight:700;letter-spacing:-.4px}
+.logo p{font-size:12.5px;color:var(--t2);font-weight:400;margin-top:1px}
+.header-right{display:flex;gap:8px;align-items:center}
+.badge{background:var(--acc-dim);border:1px solid var(--bda);color:var(--acc);font-size:11px;font-weight:600;letter-spacing:.6px;padding:4px 10px;border-radius:20px;text-transform:uppercase}
+.badge-gray{background:var(--s2);border:1px solid var(--bd);color:var(--t2);font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px}
+.main{display:grid;grid-template-columns:1fr 296px;gap:18px;flex:1;align-items:start}
+.input-panel{display:flex;flex-direction:column;gap:14px}
+.tabs{display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:4px;gap:3px}
+.tab-btn{flex:1;padding:8px 14px;border:none;border-radius:6px;background:transparent;color:var(--t2);font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:7px}
+.tab-btn.active{background:var(--s3);color:var(--t1)}
+.tab-btn:hover:not(.active){color:var(--t1)}
+.drop-zone{border:1.5px dashed var(--bd);border-radius:var(--r);padding:44px 24px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--s1);min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.drop-zone.dragging,.drop-zone:hover{border-color:var(--acc);background:var(--acc-glow)}
+.drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:42px}
+.drop-title{font-size:16px;font-weight:600}
+.drop-sub{font-size:13px;color:var(--t2)}
+.file-info{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:13px 16px;align-items:center;gap:12px;display:none}
+.file-info.visible{display:flex}
+.file-icon{font-size:28px}
+.file-details{flex:1;overflow:hidden}
+.file-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-size:12px;color:var(--t2)}
+.file-pages{font-size:12px;color:var(--acc);margin-top:2px}
+.remove-file{background:none;border:none;color:var(--t2);cursor:pointer;font-size:19px;padding:4px;border-radius:4px;transition:color .15s;line-height:1;flex-shrink:0}
+.remove-file:hover{color:var(--red)}
+.text-panel{display:none;flex-direction:column;gap:8px}
+.text-panel.visible{display:flex}
+.text-input{width:100%;min-height:300px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.75;resize:vertical;outline:none;transition:border-color .2s}
+.text-input:focus{border-color:var(--bda)}
+.text-input::placeholder{color:var(--t3)}
+.reading-view{min-height:300px;max-height:430px;overflow-y:auto;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px 18px;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.8;display:none}
+.reading-view .word{border-radius:3px;padding:0 1px;transition:background .08s,color .08s}
+.reading-view .word.active{background:var(--acc);color:#000}
+.stats-bar{display:flex;gap:18px;font-size:12.5px;color:var(--t2);flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:5px}
+.progress-section{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.progress-header{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.progress-label{color:var(--t2)}
+.progress-pct{font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
+.progress-bar{height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--acc),#FFD166);border-radius:2px;transition:width .5s ease;width:0%}
+.status{font-size:12.5px;text-align:center;padding:9px 14px;border-radius:var(--rs);display:none;font-weight:500}
+.status.visible{display:block}
+.status.info{background:rgba(78,205,196,.1);color:var(--grn)}
+.status.warn{background:rgba(232,184,75,.1);color:var(--acc)}
+.status.error{background:rgba(255,107,107,.1);color:var(--red)}
+.controls-panel{display:flex;flex-direction:column;gap:14px;position:sticky;top:20px}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px}
+.card-title{font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--t3);margin-bottom:13px}
+.voice-wrap{position:relative}
+select{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);color:var(--t1);font-family:'Outfit',sans-serif;font-size:13.5px;padding:9px 32px 9px 12px;appearance:none;cursor:pointer;outline:none;transition:border-color .2s}
+select:focus,select:hover{border-color:var(--bda)}
+.sel-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--t2);font-size:11px}
+.slider-group{display:flex;flex-direction:column;gap:14px}
+.slider-row{display:flex;flex-direction:column;gap:6px}
+.slider-header{display:flex;justify-content:space-between;font-size:12.5px}
+.slider-label{color:var(--t2)}
+.slider-value{color:var(--acc);font-weight:600;font-variant-numeric:tabular-nums;font-size:12px}
+input[type="range"]{width:100%;height:4px;background:var(--s3);border-radius:2px;outline:none;cursor:pointer;-webkit-appearance:none}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--acc);cursor:pointer;border:2.5px solid var(--bg);box-shadow:0 0 0 1.5px var(--acc)}
+input[type="range"]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--acc);cursor:pointer;border:2.5px solid var(--bg)}
+.waveform{display:flex;align-items:flex-end;gap:3px;height:38px;margin-bottom:4px}
+.wave-bar{width:4px;background:var(--acc);border-radius:3px;opacity:.2;transform-origin:bottom center;transition:opacity .3s}
+.wave-bar.active{opacity:1;animation:wv var(--d,.9s) ease-in-out infinite}
+@keyframes wv{0%,100%{transform:scaleY(.15)}50%{transform:scaleY(1)}}
+.ctrl-btns{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:7px}
+.ctrl-btn{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);color:var(--t1);font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;padding:10px 6px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.ctrl-btn:hover{border-color:var(--bda);background:var(--s3)}
+.ctrl-btn:active{transform:scale(.97)}
+.play-btn{background:var(--acc)!important;color:#000!important;font-weight:700!important;border-color:var(--acc)!important;font-size:14px!important}
+.play-btn:hover{background:#FFD166!important;border-color:#FFD166!important}
+.export-btn{width:100%;background:transparent;border:1.5px solid var(--bda);border-radius:var(--rs);color:var(--acc);font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;padding:12px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.export-btn:hover{background:var(--acc-dim)}
+.export-note{font-size:11px;color:var(--t3);margin-top:9px;line-height:1.5;text-align:center}
+.rec-indicator{display:none;align-items:center;gap:7px;font-size:12px;color:var(--red);font-weight:700;justify-content:center;margin-top:10px}
+.rec-indicator.visible{display:flex}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+.loading-bar{height:2px;background:linear-gradient(90deg,var(--acc) 0%,#FFD166 50%,var(--acc) 100%);background-size:200%;border-radius:1px;animation:shimmer 1.4s linear infinite;display:none;margin-top:4px}
+.loading-bar.visible{display:block}
+@keyframes shimmer{0%{background-position:200%}100%{background-position:-200%}}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal-overlay.visible{display:flex}
+.modal{background:var(--s2);border:1px solid var(--bd);border-radius:18px;padding:28px;max-width:460px;width:100%}
+.modal h3{font-size:19px;font-weight:700;margin-bottom:8px}
+.modal-sub{font-size:13.5px;color:var(--t2);margin-bottom:18px}
+.steps{display:flex;flex-direction:column;gap:11px}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step-num{width:25px;height:25px;background:var(--acc-dim);border:1px solid var(--bda);border-radius:50%;color:var(--acc);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13.5px;color:var(--t2);line-height:1.5;padding-top:2px}
+.step-text strong{color:var(--t1);font-weight:600}
+.modal-warn{background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.2);border-radius:var(--rs);padding:10px 14px;font-size:12.5px;color:var(--acc);margin-top:16px;line-height:1.5}
+.modal-actions{display:flex;gap:8px;margin-top:20px}
+.btn-primary{flex:1;background:var(--acc);color:#000;border:none;border-radius:var(--rs);font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;padding:12px;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:#FFD166}
+.btn-secondary{padding:12px 16px;background:none;border:1px solid var(--bd);border-radius:var(--rs);color:var(--t2);font-family:'Outfit',sans-serif;font-size:14px;cursor:pointer;transition:all .15s}
+.btn-secondary:hover{border-color:var(--bda);color:var(--t1)}
+@media(max-width:760px){.main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎙</div>
+      <div>
+        <h1>VoiceForge</h1>
+        <p>Texte &rarr; Synthèse vocale &rarr; Audio</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="badge-gray" id="voiceCount">— voix</span>
+      <span class="badge">100 % local</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="input-panel">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-pdf" onclick="switchTab('pdf')">📄 Importer un PDF</button>
+        <button class="tab-btn" id="tab-text" onclick="switchTab('text')">✏️ Coller du texte</button>
+      </div>
+
+      <div id="panel-pdf">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" accept=".pdf" id="pdfFile" onchange="handlePdfFile(this.files[0])">
+          <div class="drop-icon">📋</div>
+          <div class="drop-title">Glissez votre PDF ici</div>
+          <div class="drop-sub">ou cliquez pour sélectionner un fichier .pdf</div>
+        </div>
+        <div class="file-info" id="fileInfo">
+          <span class="file-icon">📄</span>
+          <div class="file-details">
+            <div class="file-name" id="fileName">—</div>
+            <div class="file-size" id="fileSize">—</div>
+            <div class="file-pages" id="filePages"></div>
+          </div>
+          <button class="remove-file" onclick="removePdf()">✕</button>
+        </div>
+        <div class="loading-bar" id="pdfLoading"></div>
+      </div>
+
+      <div id="panel-text" class="text-panel">
+        <textarea class="text-input" id="textInput" placeholder="Collez votre texte ici ou tapez directement…" oninput="onTextChange()"></textarea>
+      </div>
+
+      <div class="reading-view" id="readingView"></div>
+
+      <div class="stats-bar">
+        <span class="stat">✦ <span id="wordCount">0</span> mots</span>
+        <span class="stat">⏱ ~<span id="readTime">0</span> min de lecture</span>
+        <span class="stat" id="statChars" style="display:none">⌨ <span id="charCount">0</span> caractères</span>
+      </div>
+
+      <div class="progress-section" id="progressSection" style="display:none">
+        <div class="progress-header">
+          <span class="progress-label">Lecture en cours…</span>
+          <span class="progress-pct" id="progressPct">0 %</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+
+      <div class="status" id="statusMsg"></div>
+    </div>
+
+    <div class="controls-panel">
+      <div class="card">
+        <div class="card-title">🎤 Voix</div>
+        <div class="voice-wrap">
+          <select id="voiceSelect" onchange="onVoiceChange()"><option value="">Chargement…</option></select>
+          <span class="sel-arrow">▾</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙ Paramètres</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header"><span class="slider-label">Vitesse</span><span class="slider-value" id="rateVal">1.0×</span></div>
+            <input type="range" id="rateSlider" min="0.5" max="2.5" step="0.1" value="1" oninput="onSlider('rate')">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header"><span class="slider-label">Hauteur</span><span class="slider-value" id="pitchVal">1.0</span></div>
+            <input type="range" id="pitchSlider" min="0.2" max="2" step="0.1" value="1" oninput="onSlider('pitch')">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header"><span class="slider-label">Volume</span><span class="slider-value" id="volumeVal">100 %</span></div>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="onSlider('volume')">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">▶ Lecture</div>
+        <div class="waveform" id="waveform"></div>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn" onclick="stopSpeech()">⏹ Stop</button>
+          <button class="ctrl-btn play-btn" id="playBtn" onclick="togglePlay()">▶ Lire</button>
+          <button class="ctrl-btn" id="pauseBtn" onclick="pauseResume()">⏸ Pause</button>
+        </div>
+        <div class="rec-indicator" id="recIndicator"><div class="rec-dot"></div> REC</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💾 Export audio</div>
+        <button class="export-btn" onclick="openExportModal()">🎵 Exporter en audio</button>
+        <p class="export-note">Chrome &amp; Edge uniquement · Format .webm (lisible partout)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h3>🎙 Exporter en fichier audio</h3>
+    <p class="modal-sub">La capture audio utilise le partage d'onglet du navigateur. Suivez ces étapes :</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Cliquez sur <strong>"Démarrer l'export"</strong> — une fenêtre de partage s'ouvre</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Sélectionnez l'onglet <strong>"Chrome"</strong>, puis choisissez <strong>cet onglet</strong></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Cochez <strong>"Partager l'audio de l'onglet"</strong> (case en bas de la fenêtre)</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text">Cliquez <strong>"Partager"</strong> — la lecture et l'enregistrement démarrent automatiquement</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-text">Le fichier <strong>.webm</strong> se télécharge à la fin de la lecture</div></div>
+    </div>
+    <div class="modal-warn">⚠ Si le fichier est silencieux, relancez l'export et vérifiez que la case "Partager l'audio de l'onglet" est bien cochée à l'étape 3.</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="captureAndExport()">🎬 Démarrer l'export</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let fullText='',chunks=[],chunkIdx=0,isPlaying=false,isPaused=false,isExporting=false;
+let activeTab='pdf',voices=[],selectedVoice=null,wordSpans=[],lastWordIdx=-1;
+let mediaRecorder=null,recChunks=[],charOffset=0;
+
+// Waveform
+(function(){
+  const wf=document.getElementById('waveform');
+  [6,10,18,14,26,32,22,28,20,34,24,30,16,28,36,22,18,30,12,24,20,14,10,8].forEach((h,i)=>{
+    const b=document.createElement('div');
+    b.className='wave-bar';
+    b.style.cssText=`height:${h}px;--d:${(.6+i*.04).toFixed(2)}s;animation-delay:${(i*.045).toFixed(2)}s`;
+    wf.appendChild(b);
+  });
+})();
+
+function setWave(on){
+  document.querySelectorAll('.wave-bar').forEach(b=>b.classList.toggle('active',on));
+  document.getElementById('recIndicator').classList.toggle('visible',on&&isExporting);
+}
+
+// Voices
+function loadVoices(){
+  voices=speechSynthesis.getVoices();
+  if(!voices.length)return;
+  const sel=document.getElementById('voiceSelect');
+  sel.innerHTML='';
+  const add=(lbl,list)=>{
+    if(!list.length)return;
+    const g=document.createElement('optgroup');g.label=lbl;
+    list.forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=v.name+' ('+v.lang+')';g.appendChild(o);});
+    sel.appendChild(g);
+  };
+  add('🇫🇷 Français',voices.filter(v=>v.lang.startsWith('fr')));
+  add('🇬🇧🇺🇸 English',voices.filter(v=>v.lang.startsWith('en')));
+  add('🌍 Autres',voices.filter(v=>!v.lang.startsWith('fr')&&!v.lang.startsWith('en')));
+  selectedVoice=voices.find(v=>v.lang.startsWith('fr'))||voices[0]||null;
+  if(selectedVoice)sel.value=selectedVoice.name;
+  document.getElementById('voiceCount').textContent=voices.length+' voix';
+}
+speechSynthesis.onvoiceschanged=loadVoices;loadVoices();
+
+function onVoiceChange(){
+  const n=document.getElementById('voiceSelect').value;
+  selectedVoice=voices.find(v=>v.name===n)||null;
+}
+
+// Tabs
+function switchTab(tab){
+  activeTab=tab;
+  document.getElementById('tab-pdf').classList.toggle('active',tab==='pdf');
+  document.getElementById('tab-text').classList.toggle('active',tab==='text');
+  document.getElementById('panel-pdf').style.display=tab==='pdf'?'':'none';
+  document.getElementById('panel-text').classList.toggle('visible',tab==='text');
+  document.getElementById('statChars').style.display=tab==='text'?'':'none';
+  if(tab==='text')onTextChange();
+}
+
+// PDF
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragging');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragging'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('dragging');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type==='application/pdf')handlePdfFile(f);
+});
+
+async function handlePdfFile(file){
+  if(!file)return;
+  document.getElementById('pdfLoading').classList.add('visible');
+  showStatus('Extraction du texte en cours…','warn');
+  document.getElementById('fileName').textContent=file.name;
+  document.getElementById('fileSize').textContent=fmtSize(file.size);
+  document.getElementById('fileInfo').classList.add('visible');
+  document.getElementById('dropZone').style.display='none';
+  try{
+    const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    document.getElementById('filePages').textContent=pdf.numPages+' page'+(pdf.numPages>1?'s':'');
+    let text='';
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p);
+      const ct=await page.getTextContent();
+      let pt='',ly=null;
+      ct.items.forEach(it=>{if(ly!==null&&Math.abs(it.transform[5]-ly)>5)pt+='\n';pt+=it.str+' ';ly=it.transform[5];});
+      text+=pt+'\n\n';
+    }
+    fullText=text.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    updateStats(fullText);
+    document.getElementById('pdfLoading').classList.remove('visible');
+    showStatus('✓ PDF chargé — '+pdf.numPages+' page(s), '+countWords(fullText).toLocaleString()+' mots','info');
+    setTimeout(hideStatus,4000);
+  }catch(e){
+    document.getElementById('pdfLoading').classList.remove('visible');
+    showStatus('❌ Erreur PDF : '+e.message,'error');
+  }
+}
+
+function removePdf(){
+  fullText='';
+  document.getElementById('fileInfo').classList.remove('visible');
+  document.getElementById('dropZone').style.display='';
+  document.getElementById('pdfFile').value='';
+  document.getElementById('filePages').textContent='';
+  updateStats('');
+}
+
+function fmtSize(b){
+  if(b<1024)return b+' B';
+  if(b<1048576)return(b/1024).toFixed(1)+' KB';
+  return(b/1048576).toFixed(1)+' MB';
+}
+
+// Text
+function onTextChange(){
+  const t=document.getElementById('textInput').value;
+  fullText=t;updateStats(t);
+  document.getElementById('charCount').textContent=t.length.toLocaleString();
+}
+
+function countWords(t){return t.trim()?t.trim().split(/\s+/).length:0;}
+
+function updateStats(text){
+  const w=countWords(text);
+  document.getElementById('wordCount').textContent=w.toLocaleString();
+  document.getElementById('readTime').textContent=Math.max(1,Math.ceil(w/160));
+}
+
+// Sliders
+function onSlider(type){
+  const v=parseFloat(document.getElementById(type+'Slider').value);
+  const l={rate:v.toFixed(1)+'×',pitch:v.toFixed(1),volume:Math.round(v*100)+' %'};
+  document.getElementById(type+'Val').textContent=l[type];
+}
+
+// Chunking
+function toChunks(text,max=1600){
+  const sents=text.match(/[^.!?\n]+[.!?\n]+/g)||[text];
+  const res=[];let cur='';
+  for(const s of sents){
+    if(cur.length+s.length>max&&cur.trim()){res.push(cur.trim());cur=s;}
+    else cur+=' '+s;
+  }
+  if(cur.trim())res.push(cur.trim());
+  return res.length?res:[text];
+}
+
+// Reading view
+function buildReadingView(text){
+  const rv=document.getElementById('readingView');rv.innerHTML='';wordSpans=[];
+  text.split(/(\s+)/).forEach(tok=>{
+    if(/^\s+$/.test(tok)){rv.appendChild(document.createTextNode(tok));}
+    else{const sp=document.createElement('span');sp.className='word';sp.textContent=tok;wordSpans.push(sp);rv.appendChild(sp);}
+  });
+}
+
+function highlightWord(gci){
+  if(!wordSpans.length)return;
+  let pos=0,found=-1;
+  for(let i=0;i<wordSpans.length;i++){if(pos>=gci){found=i;break;}pos+=wordSpans[i].textContent.length+1;}
+  if(found<0)found=wordSpans.length-1;
+  if(found===lastWordIdx)return;
+  if(lastWordIdx>=0&&wordSpans[lastWordIdx])wordSpans[lastWordIdx].classList.remove('active');
+  wordSpans[found].classList.add('active');
+  wordSpans[found].scrollIntoView({block:'nearest',behavior:'smooth'});
+  lastWordIdx=found;
+}
+
+// Speech
+function getText(){return activeTab==='pdf'?fullText:document.getElementById('textInput').value;}
+
+function showInput(on){
+  if(activeTab==='pdf'){document.getElementById('panel-pdf').style.display=on?'':'none';}
+  else{document.getElementById('textInput').style.display=on?'':'none';}
+  document.getElementById('readingView').style.display=on?'none':'block';
+}
+
+function togglePlay(){
+  if(!isPlaying)startSpeech();
+  else if(isPaused)resumeSpeech();
+  else pauseSpeech();
+}
+
+function startSpeech(){
+  const text=getText();
+  if(!text.trim()){showStatus('⚠ Aucun texte à lire','warn');return;}
+  speechSynthesis.cancel();
+  chunks=toChunks(text);chunkIdx=0;charOffset=0;
+  isPlaying=true;isPaused=false;lastWordIdx=-1;
+  buildReadingView(text);showInput(false);
+  document.getElementById('progressSection').style.display='';
+  document.getElementById('playBtn').innerHTML='⏸ Pause';
+  document.getElementById('pauseBtn').innerHTML='⏸ Pause';
+  setWave(true);speakNext();
+}
+
+function speakNext(){
+  if(chunkIdx>=chunks.length){onDone();return;}
+  const utt=new SpeechSynthesisUtterance(chunks[chunkIdx]);
+  if(selectedVoice)utt.voice=selectedVoice;
+  utt.rate=parseFloat(document.getElementById('rateSlider').value);
+  utt.pitch=parseFloat(document.getElementById('pitchSlider').value);
+  utt.volume=parseFloat(document.getElementById('volumeSlider').value);
+  const lo=charOffset;
+  utt.onboundary=e=>{
+    if(e.name!=='word')return;
+    const r=(chunkIdx+e.charIndex/chunks[chunkIdx].length)/chunks.length;
+    updateProgress(r);highlightWord(lo+e.charIndex);
+  };
+  utt.onend=()=>{charOffset+=chunks[chunkIdx].length+1;chunkIdx++;updateProgress(chunkIdx/chunks.length);speakNext();};
+  utt.onerror=e=>{if(e.error!=='canceled')showStatus('Erreur TTS : '+e.error,'error');};
+  speechSynthesis.speak(utt);
+}
+
+function onDone(){
+  isPlaying=false;isPaused=false;charOffset=0;
+  document.getElementById('playBtn').innerHTML='▶ Lire';
+  document.getElementById('pauseBtn').innerHTML='⏸ Pause';
+  setWave(false);updateProgress(1);
+  showStatus('✓ Lecture terminée !','info');
+  if(isExporting)stopRecording();
+  setTimeout(()=>{
+    showInput(true);document.getElementById('progressSection').style.display='none';hideStatus();
+    if(lastWordIdx>=0&&wordSpans[lastWordIdx])wordSpans[lastWordIdx].classList.remove('active');
+    lastWordIdx=-1;
+  },2200);
+}
+
+function pauseResume(){if(!isPlaying)return;if(isPaused)resumeSpeech();else pauseSpeech();}
+
+function pauseSpeech(){
+  speechSynthesis.pause();isPaused=true;
+  document.getElementById('playBtn').innerHTML='▶ Reprendre';
+  document.getElementById('pauseBtn').innerHTML='▶ Reprendre';
+  setWave(false);
+}
+
+function resumeSpeech(){
+  speechSynthesis.resume();isPaused=false;
+  document.getElementById('playBtn').innerHTML='⏸ Pause';
+  document.getElementById('pauseBtn').innerHTML='⏸ Pause';
+  setWave(true);
+}
+
+function stopSpeech(){
+  if(isExporting)stopRecording();
+  speechSynthesis.cancel();
+  isPlaying=false;isPaused=false;charOffset=0;chunkIdx=0;
+  document.getElementById('playBtn').innerHTML='▶ Lire';
+  document.getElementById('pauseBtn').innerHTML='⏸ Pause';
+  document.getElementById('progressSection').style.display='none';
+  setWave(false);showInput(true);hideStatus();
+  if(lastWordIdx>=0&&wordSpans[lastWordIdx])wordSpans[lastWordIdx].classList.remove('active');
+  lastWordIdx=-1;
+}
+
+function updateProgress(ratio){
+  const p=Math.min(100,Math.round(ratio*100));
+  document.getElementById('progressFill').style.width=p+'%';
+  document.getElementById('progressPct').textContent=p+' %';
+}
+
+// Status
+function showStatus(msg,type='info'){
+  const el=document.getElementById('statusMsg');
+  el.textContent=msg;el.className='status visible '+type;
+}
+function hideStatus(){document.getElementById('statusMsg').classList.remove('visible');}
+
+// Export
+function openExportModal(){
+  const text=getText();
+  if(!text.trim()){showStatus('⚠ Aucun texte à exporter','warn');return;}
+  if(!navigator.mediaDevices?.getDisplayMedia){
+    showStatus('❌ Export non supporté. Utilisez Chrome ou Edge récent.','error');return;
+  }
+  document.getElementById('exportModal').classList.add('visible');
+}
+
+function closeModal(){document.getElementById('exportModal').classList.remove('visible');}
+
+async function captureAndExport(){
+  closeModal();recChunks=[];isExporting=true;
+  let stream;
+  try{stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false});}
+  catch(e){
+    try{
+      stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:1,height:1}});
+      stream.getVideoTracks().forEach(t=>t.stop());
+    }catch(e2){
+      showStatus('❌ Capture refusée. Partagez l\'onglet avec audio activé.','error');
+      isExporting=false;return;
+    }
+  }
+  if(!stream.getAudioTracks().length){
+    stream.getTracks().forEach(t=>t.stop());
+    showStatus('❌ Aucun audio capturé. Cochez "Partager l\'audio de l\'onglet".','error');
+    isExporting=false;return;
+  }
+  const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg'].find(t=>{
+    try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}
+  })||'';
+  mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
+  mediaRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());saveAudio();isExporting=false;document.getElementById('recIndicator').classList.remove('visible');};
+  mediaRecorder.start(200);
+  document.getElementById('recIndicator').classList.add('visible');
+  showStatus('🔴 Enregistrement en cours… Lecture en démarrage.','warn');
+  setTimeout(()=>{if(isPlaying)stopSpeech();charOffset=0;startSpeech();},700);
+}
+
+function stopRecording(){
+  if(mediaRecorder&&mediaRecorder.state==='recording'){
+    setTimeout(()=>{try{mediaRecorder.stop();}catch(e){}},900);
+  }
+}
+
+function saveAudio(){
+  if(!recChunks.length){showStatus('❌ Fichier vide. Vérifiez que l\'audio de l\'onglet était activé.','error');return;}
+  const blob=new Blob(recChunks,{type:recChunks[0].type||'audio/webm'});
+  const ext=blob.type.includes('ogg')?'ogg':'webm';
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='voiceforge_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.'+ext;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  showStatus('✓ Audio exporté ('+( blob.size/1048576).toFixed(1)+' MB) — vérifiez vos téléchargements','info');
+  setTimeout(hideStatus,6000);
+}
+
+if(!window.speechSynthesis){
+  document.getElementById('statusMsg').textContent='❌ Synthèse vocale non supportée dans ce navigateur.';
+  document.getElementById('statusMsg').className='status visible error';
+}
+</script>
+</body>
+</html>
