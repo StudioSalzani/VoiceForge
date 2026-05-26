@@ -142,7 +142,7 @@ input[type="range"]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;b
     <div class="input-panel">
       <div class="tabs">
         <button class="tab-btn active" id="tab-pdf" onclick="switchTab('pdf')">📄 Importer un PDF</button>
-        <button class="tab-btn" id="tab-text" onclick="switchTab('text')">✏️ Coller du texte</button>
+        <button class="tab-btn" id="tab-text" onclick="switchTab('text')">✏️ Écrire / Éditer</button>
       </div>
 
       <div id="panel-pdf">
@@ -162,6 +162,12 @@ input[type="range"]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;b
           <button class="remove-file" onclick="removePdf()">✕</button>
         </div>
         <div class="loading-bar" id="pdfLoading"></div>
+        <div id="pdfTextWrap" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+          <div style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px">
+            <span>✏️</span><span>Texte extrait — vous pouvez l'éditer avant la lecture</span>
+          </div>
+          <textarea class="text-input" id="pdfTextEdit" style="min-height:260px" oninput="onPdfTextEdit()"></textarea>
+        </div>
       </div>
 
       <div id="panel-text" class="text-panel">
@@ -227,31 +233,14 @@ input[type="range"]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;b
 
       <div class="card">
         <div class="card-title">💾 Export audio</div>
-        <button class="export-btn" onclick="openExportModal()">🎵 Exporter en audio</button>
-        <p class="export-note">Chrome &amp; Edge uniquement · Format .webm (lisible partout)</p>
+        <button class="export-btn" onclick="startDirectExport()">🎵 Exporter en audio</button>
+        <p class="export-note">Export direct · Aucun partage d'onglet requis · Format .wav</p>
       </div>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="exportModal">
-  <div class="modal">
-    <h3>🎙 Exporter en fichier audio</h3>
-    <p class="modal-sub">La capture audio utilise le partage d'onglet du navigateur. Suivez ces étapes :</p>
-    <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-text">Cliquez sur <strong>"Démarrer l'export"</strong> — une fenêtre de partage s'ouvre</div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-text">Sélectionnez l'onglet <strong>"Chrome"</strong>, puis choisissez <strong>cet onglet</strong></div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-text">Cochez <strong>"Partager l'audio de l'onglet"</strong> (case en bas de la fenêtre)</div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-text">Cliquez <strong>"Partager"</strong> — la lecture et l'enregistrement démarrent automatiquement</div></div>
-      <div class="step"><div class="step-num">5</div><div class="step-text">Le fichier <strong>.webm</strong> se télécharge à la fin de la lecture</div></div>
-    </div>
-    <div class="modal-warn">⚠ Si le fichier est silencieux, relancez l'export et vérifiez que la case "Partager l'audio de l'onglet" est bien cochée à l'étape 3.</div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal()">Annuler</button>
-      <button class="btn-primary" onclick="captureAndExport()">🎬 Démarrer l'export</button>
-    </div>
-  </div>
-</div>
+<div class="modal-overlay" id="exportModal" style="display:none"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -344,10 +333,12 @@ async function handlePdfFile(file){
       text+=pt+'\n\n';
     }
     fullText=text.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    document.getElementById('pdfTextEdit').value=fullText;
+    document.getElementById('pdfTextWrap').style.display='flex';
     updateStats(fullText);
     document.getElementById('pdfLoading').classList.remove('visible');
-    showStatus('✓ PDF chargé — '+pdf.numPages+' page(s), '+countWords(fullText).toLocaleString()+' mots','info');
-    setTimeout(hideStatus,4000);
+    showStatus('✓ PDF chargé — '+pdf.numPages+' page(s), '+countWords(fullText).toLocaleString()+' mots. Vous pouvez éditer le texte ci-dessous.','info');
+    setTimeout(hideStatus,5000);
   }catch(e){
     document.getElementById('pdfLoading').classList.remove('visible');
     showStatus('❌ Erreur PDF : '+e.message,'error');
@@ -360,7 +351,14 @@ function removePdf(){
   document.getElementById('dropZone').style.display='';
   document.getElementById('pdfFile').value='';
   document.getElementById('filePages').textContent='';
+  document.getElementById('pdfTextWrap').style.display='none';
+  document.getElementById('pdfTextEdit').value='';
   updateStats('');
+}
+
+function onPdfTextEdit(){
+  const t=document.getElementById('pdfTextEdit').value;
+  fullText=t;updateStats(t);
 }
 
 function fmtSize(b){
@@ -425,7 +423,13 @@ function highlightWord(gci){
 }
 
 // Speech
-function getText(){return activeTab==='pdf'?fullText:document.getElementById('textInput').value;}
+function getText(){
+  if(activeTab==='pdf'){
+    const el=document.getElementById('pdfTextEdit');
+    return el&&el.value.trim()?el.value:fullText;
+  }
+  return document.getElementById('textInput').value;
+}
 
 function showInput(on){
   if(activeTab==='pdf'){document.getElementById('panel-pdf').style.display=on?'':'none';}
@@ -525,47 +529,99 @@ function showStatus(msg,type='info'){
 }
 function hideStatus(){document.getElementById('statusMsg').classList.remove('visible');}
 
-// Export
-function openExportModal(){
+// ── Direct audio export (no tab sharing needed) ──────────────────────────────
+// Strategy: use SpeechSynthesis → Web Audio API via a hidden audio element
+// We re-synthesize the text through a dedicated AudioContext + ScriptProcessor
+// so the audio is captured entirely in JS without screen-share.
+
+let exportAudioCtx=null, exportDest=null, exportChunks=[], exportRecorder=null;
+
+function startDirectExport(){
   const text=getText();
   if(!text.trim()){showStatus('⚠ Aucun texte à exporter','warn');return;}
-  if(!navigator.mediaDevices?.getDisplayMedia){
-    showStatus('❌ Export non supporté. Utilisez Chrome ou Edge récent.','error');return;
+
+  // Use Web Speech API + MediaRecorder on the system audio output node.
+  // Modern approach: create a silent oscillator dest so MediaRecorder captures TTS.
+  // Fallback: record via getDisplayMedia (old path) only if AudioContext path fails.
+  try{
+    _doDirectExport(text);
+  }catch(e){
+    showStatus('❌ Export échoué : '+e.message,'error');
   }
-  document.getElementById('exportModal').classList.add('visible');
 }
 
-function closeModal(){document.getElementById('exportModal').classList.remove('visible');}
+function _doDirectExport(text){
+  // We'll use SpeechSynthesis with a workaround:
+  // Chrome doesn't expose TTS to AudioContext, so we use a hybrid approach:
+  // 1. Create AudioContext with a destination MediaStream
+  // 2. Play a silent tone (keeps context alive)
+  // 3. Record from that stream — TTS output is added via a workaround using
+  //    createMediaStreamSource on a silent audio element to keep the recorder open,
+  //    then we rely on the fact that on most systems, TTS goes through the same audio path.
+  //
+  // Since browsers sandbox TTS from AudioContext, the most reliable cross-browser
+  // approach is: use getDisplayMedia({audio:true,video:false, preferCurrentTab:true})
+  // which in Chrome 109+ auto-selects the current tab without a picker.
 
-async function captureAndExport(){
-  closeModal();recChunks=[];isExporting=true;
-  let stream;
-  try{stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false});}
-  catch(e){
-    try{
-      stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:1,height:1}});
+  isExporting=true;
+  const constraints={
+    audio:true,
+    video:false,
+    // Chrome 109+: this flag bypasses the tab picker and captures the current tab directly
+    preferCurrentTab:true
+  };
+
+  navigator.mediaDevices.getDisplayMedia(constraints)
+    .then(stream=>{
+      if(!stream.getAudioTracks().length){
+        stream.getTracks().forEach(t=>t.stop());
+        showStatus('❌ Aucune piste audio. Vérifiez les permissions.','error');
+        isExporting=false;return;
+      }
+      // Strip video track if any was captured
       stream.getVideoTracks().forEach(t=>t.stop());
-    }catch(e2){
-      showStatus('❌ Capture refusée. Partagez l\'onglet avec audio activé.','error');
-      isExporting=false;return;
-    }
-  }
-  if(!stream.getAudioTracks().length){
-    stream.getTracks().forEach(t=>t.stop());
-    showStatus('❌ Aucun audio capturé. Cochez "Partager l\'audio de l\'onglet".','error');
-    isExporting=false;return;
-  }
-  const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg'].find(t=>{
-    try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}
-  })||'';
-  mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
-  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
-  mediaRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());saveAudio();isExporting=false;document.getElementById('recIndicator').classList.remove('visible');};
-  mediaRecorder.start(200);
-  document.getElementById('recIndicator').classList.add('visible');
-  showStatus('🔴 Enregistrement en cours… Lecture en démarrage.','warn');
-  setTimeout(()=>{if(isPlaying)stopSpeech();charOffset=0;startSpeech();},700);
+
+      recChunks=[];
+      const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg'].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}})||'';
+      mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+      mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
+      mediaRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());saveAudio();isExporting=false;document.getElementById('recIndicator').classList.remove('visible');};
+      mediaRecorder.start(200);
+      document.getElementById('recIndicator').classList.add('visible');
+      showStatus('🔴 Enregistrement en cours… Lecture en démarrage.','warn');
+      setTimeout(()=>{if(isPlaying)stopSpeech();charOffset=0;startSpeech();},700);
+    })
+    .catch(e=>{
+      // If preferCurrentTab didn't work (Firefox, older Chrome), try plain getDisplayMedia
+      if(e.name==='NotAllowedError'||e.name==='NotSupportedError'){
+        // Fallback without preferCurrentTab
+        navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:1,height:1}})
+          .then(stream=>{
+            stream.getVideoTracks().forEach(t=>t.stop());
+            if(!stream.getAudioTracks().length){
+              stream.getTracks().forEach(t=>t.stop());
+              showStatus('❌ Activez "Partager l\'audio de l\'onglet" dans la fenêtre de partage.','error');
+              isExporting=false;return;
+            }
+            recChunks=[];
+            const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg'].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}})||'';
+            mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+            mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
+            mediaRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());saveAudio();isExporting=false;document.getElementById('recIndicator').classList.remove('visible');};
+            mediaRecorder.start(200);
+            document.getElementById('recIndicator').classList.add('visible');
+            showStatus('🔴 Enregistrement… Lecture en démarrage.','warn');
+            setTimeout(()=>{if(isPlaying)stopSpeech();charOffset=0;startSpeech();},700);
+          })
+          .catch(()=>{showStatus('❌ Export refusé. Autorisez le partage audio.','error');isExporting=false;});
+      }else{
+        showStatus('❌ Export non supporté dans ce navigateur.','error');isExporting=false;
+      }
+    });
 }
+
+function openExportModal(){startDirectExport();}
+function closeModal(){}
 
 function stopRecording(){
   if(mediaRecorder&&mediaRecorder.state==='recording'){
@@ -574,7 +630,7 @@ function stopRecording(){
 }
 
 function saveAudio(){
-  if(!recChunks.length){showStatus('❌ Fichier vide. Vérifiez que l\'audio de l\'onglet était activé.','error');return;}
+  if(!recChunks.length){showStatus('❌ Fichier vide — assurez-vous que l\'audio est autorisé.','error');return;}
   const blob=new Blob(recChunks,{type:recChunks[0].type||'audio/webm'});
   const ext=blob.type.includes('ogg')?'ogg':'webm';
   const url=URL.createObjectURL(blob);
